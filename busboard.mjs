@@ -4,3 +4,5 @@ const response = await fetch("https://api.tfl.gov.uk/StopPoint/490008660N/Arriva
 const arrivals = await response.json();
 
 console.log(arrivals);
+
+arrivals.sort((a,b) => a.timeToStation - b.timeToStation);
