@@ -2,52 +2,66 @@ import fetch from "node-fetch";
 import readLine from "readline";
 
 const stopID = "490008660N";
-const url = `https://api.tfl.gov.uk/StopPoint/${stopID}/Arrivals`; 
 
-const response = await fetch(url);
-const arrivals = await response.json();
+async function getBusInfoFor(stopID) {
+  const url = `https://api.tfl.gov.uk/StopPoint/${stopID}/Arrivals`;
+  const response = await fetch(url);
+  const busInfo = await response.json();
 
-// //sort arrivals with time to station
-const sortedArrivals = arrivals.sort((a, b) => a.timeToStation - b.timeToStation);
-console.log(sortedArrivals)
+  return busInfo;
+}
 
-arrivals.forEach((busArrival) => {
-   const minutesUntilBusArrives = Math.floor(busArrival.timeToStation / 60);
+function logBusArrivalTimes(busInfo) {
+  arrivals.sort((a, b) => a.timeToStation - b.timeToStation);
 
-   if (minutesUntilBusArrives === 0) {
-    console.log(`Bus to ${busArrival.destinationName} is due.`);
-  } else {
-    console.log(
-      `Bus to ${busArrival.destinationName} arriving in ${minutesUntilBusArrives} minutes.`
-    );
-  }
-});
+  arrivals.forEach((busArrival) => {
+    const minutesUntilBusArrives = Math.floor(busArrival.timeToStation / 60);
+
+    if (minutesUntilBusArrives === 0) {
+      console.log(`Bus to ${busArrival.destinationName} is due.`);
+    } else {
+      console.log(
+        `Bus to ${busArrival.destinationName} arriving in ${minutesUntilBusArrives} minutes.`
+      );
+    }
+  });
+}
+
+async function getPostcodeData(postcode) {
+  const urlForPostCodeRequest = `https://api.postcodes.io/postcodes/${postcode}`;
+  const postcodeJSON = await fetch(urlForPostCodeRequest);
+  return postcodeJSON.json();
+}
+
+async function getCloseStopIDS(coords) {
+  const lon = coords.longitude;
+  const lat = coords.latitude;
+  const stopsIdAPI = await fetch(
+    `https://api.tfl.gov.uk/StopPoint/?lat=${lat}&lon=${lon}&stopTypes=NaptanPublicBusCoachTram&radius=500`
+  );
+  return stopsIdAPI.json();
+}
 
 const rl = readLine.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
 
-let postcode;
+rl.question("What is your postcode? ", async (answer) => {
+  //TODO: potentially do some error handling here
+  const postcode = answer.toLocaleUpperCase().trim();
+  const postcodeData = await getPostcodeData(postcode);
 
-rl.question("What is your postcode? ", function (answer) {
-  console.log(`Postcode confirmation: ${answer}`);
-  postcode = answer;
-  getPostcodeData(postcode);
+  const postcodeLocation = {
+    longitude: postcodeData.result.longitude,
+    latitude: postcodeData.result.latitude,
+  };
+
+  const stopIDS = await getCloseStopIDS(postcodeLocation);
+
+  console.log(stopIDS);
   rl.close();
 });
-
-async function getPostcodeData (postcode) {
-  const urlForPostCodeRequest = `https://api.postcodes.io/postcodes/${postcode}`;
-  const input = await fetch(urlForPostCodeRequest);
-  const postcodeData = await input.json();
-  return console.log(postcodeData);
-}
-
-
-//current errors
-//we need to wait for user to put in postcode.
-//
 
 //get users input for postcode
 //remove any spaces + captilise it
@@ -59,6 +73,3 @@ async function getPostcodeData (postcode) {
 //coords for testing = lat = 51.55411 long = -0.292968
 // url for bus stops within long + lat = https://api.tfl.gov.uk/StopPoint/?lat={lat}&lon={lon}&stopTypes={stopTypes}[&radius]
 //stop typpes = look for NaptanId watch for children (stop on either side of the road)
-
-
-//cant use await in a function have to put async in front of it
