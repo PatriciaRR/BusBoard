@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import readLine from "readline";
+import readline from "readline-sync";
 
 const stopID = "490008660N";
 
@@ -61,44 +61,56 @@ function sortBusStopData(postcodeJSON) {
   return busStopInfo.slice(0, 2);
 }
 
-const rl = readLine.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
 
-rl.question("What is your postcode? ", async (answer) => {
-  //TODO: potentially do some error handling here
-  const postcode = answer.toLocaleUpperCase().trim();
-  let postcodeData;
+console.log('Please enter a postcode.');
+let postcode = readline.prompt().toLocaleUpperCase().trim();
 
-  let postcodeValid = false;
-  while (!postcodeValid) {
+let postcodeData;
+
+let postcodeValid = false;
+while (!postcodeValid) {
     
     try {
         postcodeData = await getPostcodeData(postcode);
-        if (!postcodeValidationJSON.result) { //.result is object value ~ si no existe el objeto creado cdo se da un postcode valido a la api, throw err
+        if (postcodeData.result === undefined) { 
             throw new Error ('Invalid postcode entered')
         }
-        else {postcodeValid = true;}
+        else {
+        postcodeValid = true;
+        }
 
     } catch (err) {
         console.log ('Postcode not recognised. \nPlease enter a valid postcode.')
-        userPostcode = readline.prompt();    
+        postcode = readline.prompt();    
     }
 }
-  //if postcode data is good, continue on.
-  //Else prompt use to try again.
-  //if it still doesn't work quit with letting user know the reason
   const postcodeLocation = {
     longitude: postcodeData.result.longitude,
     latitude: postcodeData.result.latitude,
   };
 
-  const stopIDsJSON = await getCloseStopIDS(postcodeLocation);
-  //if tfl data is good, continue on.
-  //TODO: if not good, do what?
-  const stopIDs = sortBusStopData(stopIDsJSON);
+  let stopIDs;
 
+  let stopIDValid = false;
+  while (!stopIDValid) {
+      //let stopIDsJSON;
+      try {
+          const stopIDsJSON = await getCloseStopIDS(postcodeLocation);
+          if (stopIDsJSON.httpStatusCode === 400) { 
+              throw new Error ('Server error')
+          } else if (stopIDsJSON.stopPoints.length === 0) {
+              throw new Error ('No stops in range')
+          }
+          else {
+              //stopID = sortBusStopData(stopIDsJSON);
+              stopIDValid = true;
+            }
+  
+      } catch (err) {
+          console.log ('CATCH No stops in range')
+              
+      }
+    }
   //TODO: do we need this for the user?
   console.log(
     `\nLogging data for these stop ids: ${stopIDs[0].id}, ${stopIDs[1].id}`
@@ -112,11 +124,10 @@ rl.question("What is your postcode? ", async (answer) => {
     logBusArrivalTimes(busInfo);
   }
 
-  rl.close();
-});
+
 
 //TODO: actually log out bus times ✅
-//TODO: validate the postcode
+//TODO: validate the postcode - DONE
 //TODO: validate the bus stops - what if it returns an empty array
 
 //TODO: Fix crashing if theres no bus stops
