@@ -19,7 +19,7 @@ while (!postcodeValid) {
     console.log('Please enter a valid postcode.');
     let userPostcode = readline.prompt();
     
-    //errors when fetching from API
+    //handling incorrect postcodes
     try {
         postcodeAPI = await fetch(`https://api.postcodes.io/postcodes/${userPostcode}`);
         postcodeJSON = await postcodeAPI.json();
@@ -39,38 +39,31 @@ while (!postcodeValid) {
 
 const busStopsAPI = await fetch (`https://api.tfl.gov.uk/StopPoint/?lat=${postcodeJSON.result.latitude}&lon=${postcodeJSON.result.longitude}&stopTypes=NaptanPublicBusCoachTram&radius=200`)
 const busStopsJSON = await busStopsAPI.json();
-//if (busStopsJSON === {}) {
-    //throw 'No bus stops within set radius'
-//} else {
+
+if (busStopsJSON.stopPoints.length === 0) {
+    console.log('No stops found within 200m radius'),
+    logger.warn('No stops found within 200m radius')
+}
 
 const sortedLocalStops = busStopsJSON.stopPoints.sort((a,b) => a.distance - b.distance)
-const closestBusStops = [];
-sortedLocalStops.forEach(stop => closestBusStops.push([stop.commonName, Math.round(stop.distance), stop.id]));
-console.log(closestBusStops)
-const key2BusStops = sortedLocalStops.slice(0,2)
+const closest3BusStops = sortedLocalStops.slice(0,3);
 
-//console.log(busStopsJSON.stopPoints.commonName)
+for (const stop of closest3BusStops) { // if using forEach (i.e. function), unable to use 'await'
+    console.log(`${stop.commonName} is ${Math.round(stop.distance)} metres away`);
+    const arrivalsAPI = await fetch(`https://api.tfl.gov.uk/StopPoint/${stop.naptanId}/Arrivals`)
+    const arrivalsJSON = await arrivalsAPI.json();
 
+    const sortedArrivals = arrivalsJSON.sort((a,b) => a.timeToStation - b.timeToStation).slice(0,5)
 
+    sortedArrivals.forEach (arrival =>  { 
+        if (`${arrival.timeToStation}` < 60) {
+            console.log(`***The next bus travelling towards ${arrival.destinationName} is due` )
+        } else {
+            console.log(`   ***The next bus travelling towards ${arrival.destinationName} arrives in ${Math.floor(arrival.timeToStation/60)} minutes`)
+        }
+    })  
+}
 
-
-// Loop to get ID of closest TWO stops to confirm arrivals
-// let stopID = ''
-// for(let i = 0; i < 2; i++) {
-//     stopID = key2BusStops[i][2]
-// }
-// const arrivalsAPI = await fetch(`https://api.tfl.gov.uk/StopPoint/${stopID}/Arrivals`)
-// const arrivalsJSON = await arrivalsAPI.json();
-// console.log(arrivalsJSON)
-
-// const nextArrivals = []
-// arrivalsJSON.forEach(bus => nextArrivals.push([bus.lineName, bus.destinationName, Math.round(bus.timeToStation/60)]));
-// const sortedArrivals = nextArrivals.sort((a,b)=> a.timeToStation - b.timeToStation) // not sorting???
-// //console.log(sortedArrivals)
-// for (let i = 0; i < sortedArrivals.length; i++) {
-//         console.log(`Bus ${sortedArrivals[i][0]} towards ${sortedArrivals[i][1]} will arrive in ${sortedArrivals[i][2]} minutes`);
-// }
- 
 
 
 

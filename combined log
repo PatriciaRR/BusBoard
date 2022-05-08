@@ -18,3 +18,4 @@
 {"level":"error","message":"Fetch to https://api.postcodes.io/postcodes/sjsfk returned a non-success status code"}
 {"level":"error","message":"Fetch to https://api.postcodes.io/postcodes/jhpoi returned a non-success status code"}
 {"level":"warn","message":"Asking user to re-enter postcode info after a non-successful fetch"}
+{"level":"warn","message":"No stops found within 200m radius"}
